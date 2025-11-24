@@ -9,14 +9,15 @@ export { MCPServer };
 export interface Env {
 	MCPServer: DurableObjectNamespace<MCPServer>;
 	BUCKET: R2Bucket;
+	ASSETS: Fetcher;
 }
 
-const app = new Hono<{ Bindings: Env }>();
+const api = new Hono<{ Bindings: Env }>();
 
-app.use("/*", cors());
+api.use("/*", cors());
 
 // Upload a file
-app.post("/api/upload", async (c) => {
+api.post("/api/upload", async (c) => {
 	const formData = await c.req.formData();
 	const file = formData.get("file") as File | null;
 
@@ -50,7 +51,7 @@ app.post("/api/upload", async (c) => {
 });
 
 // Add a remote URL
-app.post("/api/remote", async (c) => {
+api.post("/api/remote", async (c) => {
 	const { url } = await c.req.json<{ url: string }>();
 
 	if (!url) {
@@ -91,7 +92,7 @@ app.post("/api/remote", async (c) => {
 });
 
 // Get status of an MCP server
-app.get("/api/status/:nanoid", async (c) => {
+api.get("/api/status/:nanoid", async (c) => {
 	const id = c.req.param("nanoid");
 
 	const metadataObj = await c.env.BUCKET.get(`${id}/metadata.json`);
@@ -119,7 +120,7 @@ app.get("/api/status/:nanoid", async (c) => {
 });
 
 // MCP endpoint - route to the Durable Object
-app.all("/mcp", async (c) => {
+api.all("/mcp", async (c) => {
 	const url = new URL(c.req.url);
 	const host = url.hostname;
 	const id = host.split(".")[0];
@@ -132,4 +133,17 @@ app.all("/mcp", async (c) => {
 	return agent.onMcpRequest(c.req.raw);
 });
 
-export default app;
+// Export the fetch handler
+export default {
+	async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+		const url = new URL(request.url);
+
+		// Handle API and MCP routes
+		if (url.pathname.startsWith("/api/") || url.pathname === "/mcp") {
+			return api.fetch(request, env, ctx);
+		}
+
+		// Serve static assets for everything else
+		return env.ASSETS.fetch(request);
+	},
+};
