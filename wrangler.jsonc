@@ -1,0 +1,10 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "txt2mcp",
+	"account_id": "543fbdef1eeaed8a02c251c8c4d9510b",
+	"compatibility_date": "2025-01-01",
+	"compatibility_flags": ["nodejs_compat"],
+	"assets": {
+		"directory": "dist"
+	}
+}
