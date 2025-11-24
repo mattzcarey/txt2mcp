@@ -4,7 +4,43 @@
 	"account_id": "543fbdef1eeaed8a02c251c8c4d9510b",
 	"compatibility_date": "2025-01-01",
 	"compatibility_flags": ["nodejs_compat"],
+	"main": "src/server/index.ts",
 	"assets": {
 		"directory": "dist"
+	},
+	"routes": [
+		{
+			"pattern": "txt2mcp.com/*",
+			"zone_name": "txt2mcp.com"
+		},
+		{
+			"pattern": "*.txt2mcp.com/*",
+			"zone_name": "txt2mcp.com"
+		}
+	],
+	"r2_buckets": [
+		{
+			"binding": "BUCKET",
+			"bucket_name": "txt2mcp"
+		}
+	],
+	"durable_objects": {
+		"bindings": [
+			{
+				"class_name": "MCPServer",
+				"name": "MCPServer"
+			}
+		]
+	},
+	"migrations": [
+		{
+			"new_sqlite_classes": ["MCPServer"],
+			"tag": "v1"
+		}
+	],
+	"observability": {
+		"logs": {
+			"enabled": true
+		}
 	}
 }

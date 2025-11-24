@@ -1,31 +1,84 @@
 @import "tailwindcss";
 
 :root {
-	--background: #0a0a0a;
-	--foreground: #ededed;
-	--accent: #3b82f6;
-	--accent-hover: #2563eb;
-	--border: #262626;
-	--muted: #737373;
+	--background: #09090b;
+	--foreground: #fafafa;
+	--card: #18181b;
+	--card-hover: #27272a;
+	--accent: #a855f7;
+	--accent-hover: #9333ea;
+	--border: #27272a;
+	--border-light: #3f3f46;
+	--muted: #71717a;
+	--success: #22c55e;
+	--error: #ef4444;
 }
 
 @theme inline {
 	--color-background: var(--background);
 	--color-foreground: var(--foreground);
+	--color-card: var(--card);
+	--color-card-hover: var(--card-hover);
 	--color-accent: var(--accent);
 	--color-accent-hover: var(--accent-hover);
 	--color-border: var(--border);
+	--color-border-light: var(--border-light);
 	--color-muted: var(--muted);
-	--font-mono: ui-monospace, Menlo, Monaco, "Segoe UI Mono", "Source Code Pro", "Fira Mono",
-		monospace;
+	--color-success: var(--success);
+	--color-error: var(--error);
+	--font-mono: "SF Mono", "Fira Code", "Fira Mono", "Roboto Mono", monospace;
+}
+
+html {
+	scroll-behavior: smooth;
 }
 
 body {
 	background: var(--background);
 	color: var(--foreground);
-	font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+		sans-serif;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
 }
 
 * {
 	box-sizing: border-box;
+}
+
+::selection {
+	background: var(--accent);
+	color: white;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+	width: 6px;
+	height: 6px;
+}
+
+::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+	background: var(--border-light);
+	border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+	background: var(--muted);
+}
+
+/* Focus styles */
+*:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}
+
+/* Smooth transitions */
+button,
+a,
+input {
+	transition: all 0.15s ease;
 }
