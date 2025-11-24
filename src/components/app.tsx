@@ -1,68 +1,63 @@
 import { useState } from "react";
-import { clsx } from "clsx";
 import { CreateTab } from "./create-tab";
 import { LookupTab } from "./lookup-tab";
 import { AboutTab } from "./about-tab";
 
-type TabId = "create" | "lookup" | "about";
-
-const tabs: { id: TabId; label: string }[] = [
-	{ id: "create", label: "Create" },
-	{ id: "lookup", label: "Lookup" },
-	{ id: "about", label: "About" },
-];
+type Tab = "create" | "lookup" | "about";
 
 export function App() {
-	const [activeTab, setActiveTab] = useState<TabId>("create");
+	const [activeTab, setActiveTab] = useState<Tab>("create");
 
 	return (
-		<div className="min-h-screen flex flex-col">
-			{/* Header */}
-			<header className="border-b border-border">
-				<div className="max-w-3xl mx-auto px-6 py-8">
-					<h1 className="text-3xl font-semibold tracking-tight">
-						txt<span className="text-accent">2</span>mcp
-					</h1>
-					<p className="text-muted mt-2 text-sm">Convert text files into MCP servers</p>
-				</div>
+		<div className="container" style={{ paddingTop: "3rem", paddingBottom: "3rem" }} onContextMenu={(e) => e.preventDefault()}>
+			<header className="text-center mb-8">
+				<h1 className="mb-2">
+					txt<span style={{ color: "var(--color-accent)" }}>2</span>mcp
+				</h1>
+				<p className="text-muted text-sm">MCP Servers to search over text files</p>
 			</header>
 
-			{/* Tab Navigation */}
-			<nav className="border-b border-border">
-				<div className="max-w-3xl mx-auto px-6">
-					<div className="flex gap-8">
-						{tabs.map((tab) => (
-							<button
-								key={tab.id}
-								onClick={() => setActiveTab(tab.id)}
-								className={clsx(
-									"py-4 text-sm font-medium border-b-2 -mb-px transition-colors",
-									activeTab === tab.id
-										? "border-accent text-foreground"
-										: "border-transparent text-muted hover:text-foreground",
-								)}
-							>
-								{tab.label}
-							</button>
-						))}
-					</div>
-				</div>
+			<nav className="tabs mb-6">
+				<button
+					onClick={() => setActiveTab("create")}
+					className={`tab ${activeTab === "create" ? "active" : ""}`}
+				>
+					Create
+				</button>
+				<button
+					onClick={() => setActiveTab("lookup")}
+					className={`tab ${activeTab === "lookup" ? "active" : ""}`}
+				>
+					Lookup
+				</button>
+				<button
+					onClick={() => setActiveTab("about")}
+					className={`tab ${activeTab === "about" ? "active" : ""}`}
+				>
+					About
+				</button>
 			</nav>
 
-			{/* Main Content */}
-			<main className="flex-1 py-12">
-				<div className="max-w-3xl mx-auto px-6">
-					{activeTab === "create" && <CreateTab />}
-					{activeTab === "lookup" && <LookupTab />}
-					{activeTab === "about" && <AboutTab />}
-				</div>
+			<main>
+				{activeTab === "create" && <CreateTab />}
+				{activeTab === "lookup" && <LookupTab />}
+				{activeTab === "about" && <AboutTab />}
 			</main>
 
-			{/* Footer */}
-			<footer className="border-t border-border py-6">
-				<div className="max-w-3xl mx-auto px-6 text-center">
-					<p className="text-xs text-muted">Powered by Cloudflare Workers</p>
-				</div>
+			<footer className="text-center mt-6">
+				<p className="text-xs text-muted">
+					made with{" "}
+					<span style={{ color: "var(--color-accent)" }}>♥</span>
+					{" "}by{" "}
+					<a
+						href="https://twitter.com/mattzcarey"
+						target="_blank"
+						rel="noopener noreferrer"
+						style={{ color: "var(--color-accent)", textDecoration: "none" }}
+					>
+						@mattzcarey
+					</a>
+				</p>
 			</footer>
 		</div>
 	);

@@ -1,8 +1,11 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { nanoid } from "nanoid";
+import { nanoid as generateNanoid } from "nanoid";
 import { getAgentByName } from "agents";
 import { MCPServer } from "./mcp-server";
+
+// Generate lowercase nanoid to avoid case sensitivity issues with DNS/URLs
+const nanoid = () => generateNanoid(24).toLowerCase();
 
 export { MCPServer };
 
@@ -30,7 +33,7 @@ api.post("/api/upload", async (c) => {
 	}
 
 	const content = await file.text();
-	const id = nanoid(10);
+	const id = nanoid();
 
 	// Store in R2
 	await c.env.BUCKET.put(`${id}/content.txt`, content);
@@ -70,7 +73,7 @@ api.post("/api/remote", async (c) => {
 	}
 
 	const content = await response.text();
-	const id = nanoid(10);
+	const id = nanoid();
 
 	// Store in R2
 	await c.env.BUCKET.put(`${id}/content.txt`, content);
@@ -121,8 +124,8 @@ api.get("/api/status/:nanoid", async (c) => {
 
 // MCP endpoint - route to the Durable Object
 api.all("/mcp", async (c) => {
-	const url = new URL(c.req.url);
-	const host = url.hostname;
+	// Use Host header to get the actual requested hostname
+	const host = c.req.header("host") || new URL(c.req.url).hostname;
 	const id = host.split(".")[0];
 
 	if (!id || id === "txt2mcp" || id === "www") {
@@ -137,13 +140,44 @@ api.all("/mcp", async (c) => {
 export default {
 	async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
 		const url = new URL(request.url);
+		// Use the Host header which contains the actual requested hostname
+		const host = request.headers.get("host") || url.hostname;
 
-		// Handle API and MCP routes
-		if (url.pathname.startsWith("/api/") || url.pathname === "/mcp") {
+		// Check if this is a subdomain request (not main domain)
+		const isSubdomain = host !== "txt2mcp.com" && host !== "www.txt2mcp.com" && host.endsWith(".txt2mcp.com");
+
+		if (isSubdomain) {
+			// Subdomains only serve /mcp endpoint
+			if (url.pathname === "/mcp") {
+				return api.fetch(request, env, ctx);
+			}
+			// Return info about how to use the MCP server
+			if (url.pathname === "/" || url.pathname === "") {
+				const nanoid = host.split(".")[0];
+				return new Response(
+					JSON.stringify({
+						name: "txt2mcp MCP Server",
+						nanoid,
+						endpoint: `https://${host}/mcp`,
+						usage: "Connect your MCP client to the endpoint URL above",
+					}),
+					{
+						headers: {
+							"Content-Type": "application/json",
+							"Access-Control-Allow-Origin": "*",
+						},
+					},
+				);
+			}
+			return new Response("Not Found", { status: 404 });
+		}
+
+		// Main domain: Handle API routes
+		if (url.pathname.startsWith("/api/")) {
 			return api.fetch(request, env, ctx);
 		}
 
-		// Serve static assets for everything else
+		// Main domain: Serve static assets for everything else
 		return env.ASSETS.fetch(request);
 	},
 };

@@ -9,12 +9,13 @@
 		"directory": "dist",
 		"binding": "ASSETS",
 		"html_handling": "auto-trailing-slash",
-		"not_found_handling": "single-page-application"
+		"not_found_handling": "single-page-application",
+		"run_worker_first": true
 	},
 	"routes": [
 		{
-			"pattern": "txt2mcp.com/*",
-			"zone_name": "txt2mcp.com"
+			"pattern": "txt2mcp.com",
+			"custom_domain": true
 		},
 		{
 			"pattern": "*.txt2mcp.com/*",
