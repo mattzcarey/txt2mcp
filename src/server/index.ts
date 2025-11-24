@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { nanoid } from "nanoid";
+import { getAgentByName } from "agents";
 import { MCPServer } from "./mcp-server";
 
 export { MCPServer };
@@ -42,9 +43,8 @@ app.post("/api/upload", async (c) => {
 	);
 
 	// Initialize the Durable Object
-	const doId = c.env.MCPServer.idFromName(id);
-	const stub = c.env.MCPServer.get(doId);
-	await stub.initialize(content, file.name, "upload");
+	const agent = await getAgentByName(c.env.MCPServer, id);
+	await agent.initialize(content, file.name, "upload");
 
 	return c.json({ nanoid: id, url: `https://${id}.txt2mcp.com` });
 });
@@ -57,14 +57,12 @@ app.post("/api/remote", async (c) => {
 		return c.json({ error: "No URL provided" }, 400);
 	}
 
-	// Validate URL
 	try {
 		new URL(url);
 	} catch {
 		return c.json({ error: "Invalid URL" }, 400);
 	}
 
-	// Fetch the content
 	const response = await fetch(url);
 	if (!response.ok) {
 		return c.json({ error: "Failed to fetch remote content" }, 400);
@@ -85,10 +83,9 @@ app.post("/api/remote", async (c) => {
 		}),
 	);
 
-	// Initialize the Durable Object with scheduled updates
-	const doId = c.env.MCPServer.idFromName(id);
-	const stub = c.env.MCPServer.get(doId);
-	await stub.initialize(content, url, "remote", url);
+	// Initialize the Durable Object
+	const agent = await getAgentByName(c.env.MCPServer, id);
+	await agent.initialize(content, url, "remote", url);
 
 	return c.json({ nanoid: id, url: `https://${id}.txt2mcp.com` });
 });
@@ -121,36 +118,18 @@ app.get("/api/status/:nanoid", async (c) => {
 	});
 });
 
-// MCP endpoints - route to the Durable Object
-app.all("/sse/*", async (c) => {
-	// Extract nanoid from subdomain or query param
+// MCP endpoint - route to the Durable Object
+app.all("/mcp", async (c) => {
 	const url = new URL(c.req.url);
 	const host = url.hostname;
-	const nanoid = host.split(".")[0];
+	const id = host.split(".")[0];
 
-	if (!nanoid || nanoid === "txt2mcp" || nanoid === "www") {
+	if (!id || id === "txt2mcp" || id === "www") {
 		return c.json({ error: "Invalid MCP server" }, 400);
 	}
 
-	const doId = c.env.MCPServer.idFromName(nanoid);
-	const stub = c.env.MCPServer.get(doId);
-
-	return stub.fetch(c.req.raw);
-});
-
-app.all("/mcp/*", async (c) => {
-	const url = new URL(c.req.url);
-	const host = url.hostname;
-	const nanoid = host.split(".")[0];
-
-	if (!nanoid || nanoid === "txt2mcp" || nanoid === "www") {
-		return c.json({ error: "Invalid MCP server" }, 400);
-	}
-
-	const doId = c.env.MCPServer.idFromName(nanoid);
-	const stub = c.env.MCPServer.get(doId);
-
-	return stub.fetch(c.req.raw);
+	const agent = await getAgentByName(c.env.MCPServer, id);
+	return agent.onMcpRequest(c.req.raw);
 });
 
 export default app;

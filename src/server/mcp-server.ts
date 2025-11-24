@@ -1,5 +1,9 @@
-import { McpAgent } from "agents/mcp";
+import { Agent } from "agents";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { createMcpHandler, WorkerTransport, type TransportState } from "agents/mcp";
+import { z } from "zod";
+
+const STATE_KEY = "mcp_transport_state";
 
 interface Env {
 	MCPServer: DurableObjectNamespace<MCPServer>;
@@ -14,10 +18,18 @@ interface State {
 	lastUpdated: string;
 }
 
-export class MCPServer extends McpAgent<Env, State, {}> {
+export class MCPServer extends Agent<Env, State> {
 	server = new McpServer({
 		name: "txt2mcp",
 		version: "1.0.0",
+	});
+
+	transport = new WorkerTransport({
+		sessionIdGenerator: () => this.name,
+		storage: {
+			get: () => this.ctx.storage.kv.get<TransportState>(STATE_KEY),
+			set: (state: TransportState) => this.ctx.storage.kv.put<TransportState>(STATE_KEY, state),
+		},
 	});
 
 	initialState: State = {
@@ -27,53 +39,46 @@ export class MCPServer extends McpAgent<Env, State, {}> {
 		lastUpdated: new Date().toISOString(),
 	};
 
-	async init() {
-		// Register the content resource
-		this.server.resource("content", "mcp://txt2mcp/content", () => {
-			return {
-				contents: [
-					{
-						text: this.state.content,
-						uri: "mcp://txt2mcp/content",
-						mimeType: "text/plain",
-					},
-				],
-			};
-		});
+	onStart() {
+		// Single search tool
+		this.server.tool(
+			"search",
+			"Search through the text content",
+			{ query: z.string().describe("The search query") },
+			async ({ query }) => {
+				const content = this.state.content;
+				const lines = content.split("\n");
+				const matches: string[] = [];
 
-		// Register a tool to get content info
-		this.server.tool("get_content", "Get the text content", {}, async () => {
-			return {
-				content: [
-					{
-						type: "text",
-						text: this.state.content,
-					},
-				],
-			};
-		});
+				const queryLower = query.toLowerCase();
+				for (const line of lines) {
+					if (line.toLowerCase().includes(queryLower)) {
+						matches.push(line.trim());
+					}
+				}
 
-		// Register a tool to get metadata
-		this.server.tool("get_info", "Get information about this MCP server", {}, async () => {
-			return {
-				content: [
-					{
-						type: "text",
-						text: JSON.stringify(
-							{
-								name: this.state.name,
-								type: this.state.type,
-								sourceUrl: this.state.sourceUrl,
-								lastUpdated: this.state.lastUpdated,
-								contentLength: this.state.content.length,
-							},
-							null,
-							2,
-						),
-					},
-				],
-			};
-		});
+				if (matches.length === 0) {
+					return {
+						content: [{ type: "text" as const, text: `No matches found for "${query}"` }],
+					};
+				}
+
+				return {
+					content: [
+						{
+							type: "text" as const,
+							text: `Found ${matches.length} match(es):\n\n${matches.join("\n")}`,
+						},
+					],
+				};
+			},
+		);
+	}
+
+	async onMcpRequest(request: Request) {
+		return createMcpHandler(this.server, {
+			transport: this.transport,
+		})(request, this.env, {} as ExecutionContext);
 	}
 
 	async initialize(content: string, name: string, type: "upload" | "remote", sourceUrl?: string) {
@@ -87,11 +92,11 @@ export class MCPServer extends McpAgent<Env, State, {}> {
 
 		// Schedule updates for remote URLs
 		if (type === "remote" && sourceUrl) {
-			await this.schedule(60 * 60, "updateContent"); // Update every hour
+			await this.ctx.storage.setAlarm(Date.now() + 60 * 60 * 1000);
 		}
 	}
 
-	async updateContent() {
+	async alarm() {
 		if (this.state.type !== "remote" || !this.state.sourceUrl) {
 			return;
 		}
@@ -107,19 +112,16 @@ export class MCPServer extends McpAgent<Env, State, {}> {
 				});
 
 				// Update R2 as well
-				await this.env.BUCKET.put(`${this.name}/content.txt`, content);
-
-				// Schedule next update
-				await this.schedule(60 * 60, "updateContent");
+				const nanoid = this.ctx.id.name;
+				if (nanoid) {
+					await this.env.BUCKET.put(`${nanoid}/content.txt`, content);
+				}
 			}
 		} catch (error) {
 			console.error("Failed to update content:", error);
-			// Still schedule next update even on failure
-			await this.schedule(60 * 60, "updateContent");
 		}
-	}
 
-	onStateUpdate(state: State) {
-		console.log("State updated:", { name: state.name, contentLength: state.content.length });
+		// Schedule next update
+		await this.ctx.storage.setAlarm(Date.now() + 60 * 60 * 1000);
 	}
 }

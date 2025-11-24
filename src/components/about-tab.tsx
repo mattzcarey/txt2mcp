@@ -45,7 +45,7 @@ export function AboutTab() {
 						{`{
   "mcpServers": {
     "my-content": {
-      "url": "https://abc123.txt2mcp.com/sse"
+      "url": "https://abc123.txt2mcp.com/mcp"
     }
   }
 }`}

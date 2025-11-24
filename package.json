@@ -16,7 +16,7 @@
 		"@astrojs/cloudflare": "^12.6.10",
 		"@astrojs/react": "^4.4.2",
 		"@modelcontextprotocol/sdk": "^1.12.1",
-		"agents": "^0.0.89",
+		"agents": "^0.0.0-0b7a30e",
 		"astro": "^5.15.4",
 		"clsx": "^2.1.1",
 		"hono": "^4.7.0",
